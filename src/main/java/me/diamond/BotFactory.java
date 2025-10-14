@@ -40,9 +40,7 @@ public class BotFactory {
         }
 
         ClientSession session = createSession(protocol, serverAddress);
-
         MinecraftBot bot = new MinecraftBot(session, credentials, serverAddress, username);
-        log.info("Connected as {} to {}:{}", username, serverAddress.getHostName(), serverAddress.getPort());
 
         // Keep JVM alive
         ScheduledExecutorService keepAlive = Executors.newSingleThreadScheduledExecutor();

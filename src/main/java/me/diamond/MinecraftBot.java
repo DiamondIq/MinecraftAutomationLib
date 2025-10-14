@@ -13,6 +13,8 @@ import org.cloudburstmc.math.vector.Vector3d;
 import org.geysermc.mcprotocollib.network.ClientSession;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.ServerboundChatCommandPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.ServerboundChatPacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.player.ServerboundMovePlayerPosRotPacket;
+import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.player.ServerboundMovePlayerRotPacket;
 
 import java.net.InetSocketAddress;
 import java.time.Instant;
@@ -33,6 +35,7 @@ public class MinecraftBot {
     private long autoReconnectDelay;
     private final Inventory inventory;
     private final EventManager eventManager;
+    private final PlayerTracker playerTracker;
     private final String username;
     private Window openedWindow;
     private Vector3d location;
@@ -48,6 +51,7 @@ public class MinecraftBot {
         this.autoReconnect = false;
         this.eventManager = new EventManager(username);
         this.inventory = new Inventory(this);
+        this.playerTracker = new PlayerTracker();
         this.executor = Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r, getUsername() + "-game-thread");
             t.setDaemon(true);
@@ -68,6 +72,17 @@ public class MinecraftBot {
         session.send(new ServerboundChatPacket(message, Instant.now().toEpochMilli(), 0L, null, 0, new BitSet(), 0));
     }
 
+    public void lookAt(Vector3d location) {
+        float[] angles = getYawPitchTo(this.location.add(0, 1.62, 0), location); //Add 1.62 on the Y to make it eye level
+        this.yaw = angles[0];
+        this.pitch = angles[1];
+        session.send(new ServerboundMovePlayerRotPacket(true, true, yaw, pitch));
+    }
+
+    public void lookAtPlayer(PlayerTracker.TrackedPlayer player) {
+        lookAt(player.position.add(0, 1.62, 0));  //Add 1.62 on the Y to make it eye level
+    }
+
     /**
      * @param autoReconnect Should the bot automatically reconnect if it disconnects from the server
      * @param delay         The delay in millis for the bot to rejoin the server after getting disconnected
@@ -76,6 +91,21 @@ public class MinecraftBot {
         this.autoReconnect = autoReconnect;
         this.autoReconnectDelay = delay;
     }
+
+
+    private float[] getYawPitchTo(Vector3d from, Vector3d to) {
+        double dx = to.getX() - from.getX();
+        double dy = to.getY() - from.getY();
+        double dz = to.getZ() - from.getZ();
+
+        double distanceXZ = Math.sqrt(dx * dx + dz * dz);
+
+        float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
+        float pitch = (float) Math.toDegrees(-Math.atan2(dy, distanceXZ));
+
+        return new float[]{yaw, pitch};
+    }
+
 
     public static final class Accessor {
         private Accessor() {
