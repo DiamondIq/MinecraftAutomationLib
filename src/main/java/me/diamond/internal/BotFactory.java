@@ -1,6 +1,7 @@
-package me.diamond;
+package me.diamond.internal;
 
 import lombok.extern.slf4j.Slf4j;
+import me.diamond.Bot;
 import me.diamond.credentials.Credentials;
 import me.diamond.credentials.MicrosoftCredentials;
 import me.diamond.credentials.OfflineCredentials;
@@ -20,9 +21,9 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
-public class BotFactory {
+public final class BotFactory {
 
-    public static MinecraftBot createBot(Credentials credentials, InetSocketAddress serverAddress) {
+    public static Bot createBot(Credentials credentials, InetSocketAddress serverAddress) {
         StepFullJavaSession.FullJavaSession fullSession;
         String username;
 
@@ -40,7 +41,7 @@ public class BotFactory {
         }
 
         ClientSession session = createSession(protocol, serverAddress);
-        MinecraftBot bot = new MinecraftBot(session, credentials, serverAddress, username);
+        BotImpl bot = new BotImpl(session, credentials, serverAddress, username);
 
         // Keep JVM alive
         ScheduledExecutorService keepAlive = Executors.newSingleThreadScheduledExecutor();

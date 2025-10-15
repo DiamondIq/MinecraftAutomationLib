@@ -1,11 +1,10 @@
-package me.diamond.event;
+package me.diamond.internal;
 
 import lombok.extern.slf4j.Slf4j;
-import me.diamond.BotFactory;
-import me.diamond.MinecraftBot;
 import me.diamond.container.Item;
-import me.diamond.container.Window;
-import me.diamond.internal.BotUpdater;
+import me.diamond.event.*;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextComponent;
 import org.cloudburstmc.math.vector.Vector3d;
 import org.geysermc.mcprotocollib.network.ClientSession;
 import org.geysermc.mcprotocollib.network.Session;
@@ -37,25 +36,20 @@ import java.util.Optional;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import static me.diamond.util.ComponentUtils.toPlainText;
 
 @Slf4j
-public class PacketHandler extends SessionAdapter {
+final class PacketHandler extends SessionAdapter {
 
-    private final MinecraftBot bot;
-    private final EventManager eventManager;
+    private final BotImpl bot;
+    private final EventManagerImpl eventManager;
 
     private volatile boolean tickTaskStarted = false;
 
-    private final AtomicInteger remainingChunkBatches = new AtomicInteger(0);
-
     private final ScheduledExecutorService botExecutor;
 
-    public PacketHandler(MinecraftBot bot) {
+    public PacketHandler(BotImpl bot) {
         this.bot = bot;
-        this.eventManager = bot.getEventManager();
+        this.eventManager = (EventManagerImpl) bot.getEventManager();
         this.botExecutor = bot.getExecutor();
     }
 
@@ -65,7 +59,7 @@ public class PacketHandler extends SessionAdapter {
             try {
                 if (packet instanceof ClientboundLoginPacket loginPacket) {
                     log.info("Connected as {} to {}:{}", bot.getUsername(), bot.getServerAddress().getHostName(), bot.getServerAddress().getPort());
-                    BotUpdater.setEntityId(bot, loginPacket.getEntityId());
+                    bot.setEntityId(loginPacket.getEntityId());
                     session.send(new ServerboundClientInformationPacket("en_us", 2, ChatVisibility.FULL, true, Arrays.asList(SkinPart.VALUES), HandPreference.RIGHT_HAND, false, true, ParticleStatus.ALL));
 //                    session.send(new ServerboundCustomPayloadPacket(Key.key("minecraft:brand"), "vanilla".getBytes(StandardCharsets.UTF_8)));
                     botExecutor.schedule(() -> {
@@ -79,9 +73,9 @@ public class PacketHandler extends SessionAdapter {
                 } else if (packet instanceof ClientboundPlayerPositionPacket pos) {
                     // Accept teleport
                     session.send(new ServerboundAcceptTeleportationPacket(pos.getId()));
-                    BotUpdater.setLocation(bot, pos.getPosition());
-                    BotUpdater.setYaw(bot, pos.getYRot());
-                    BotUpdater.setPitch(bot, pos.getXRot());
+                    bot.setLocation(pos.getPosition());
+                    bot.setYaw(pos.getYRot());
+                    bot.setPitch(pos.getXRot());
 
                 } else if (packet instanceof ClientboundChunkBatchFinishedPacket) {
                     session.send(new ServerboundChunkBatchReceivedPacket(1.0f));
@@ -102,13 +96,13 @@ public class PacketHandler extends SessionAdapter {
                     handleContainerSetSlot(slotPacket);
                 } else if (packet instanceof ClientboundOpenScreenPacket openScreenPacket) {
                     if (openScreenPacket.getContainerId() != 0) {
-                        Window window = new Window(bot, toPlainText(openScreenPacket.getTitle()), openScreenPacket.getContainerId());
-                        BotUpdater.setOpenedWindow(bot, window);
+                        WindowImpl window = new WindowImpl(bot, toPlainText(openScreenPacket.getTitle()), openScreenPacket.getContainerId());
+                        bot.setOpenedWindow(window);
                         eventManager.fireEvent(new WindowOpenEvent(bot, window));
                     }
                 } else if (packet instanceof ClientboundContainerClosePacket containerClosePacket) {
                     if (containerClosePacket.getContainerId() != 0) {
-                        BotUpdater.setOpenedWindow(bot, null);
+                        bot.setOpenedWindow(null);
                     }
                 } else if (packet instanceof ClientboundAddEntityPacket addEntity) {
                     if (addEntity.getType() == EntityType.PLAYER) {
@@ -124,7 +118,7 @@ public class PacketHandler extends SessionAdapter {
                         var newPos = tracked.position.add(move.getMoveX(), move.getMoveY(), move.getMoveZ());
                         if (tracked.position.compareTo(newPos) != 0) {
                             tracked.position = newPos;
-                            bot.getEventManager().fireEvent(new PlayerMoveEvent(bot, tracked));
+                            eventManager.fireEvent(new PlayerMoveEvent(bot, tracked));
                         }
                     }
                 } else if (packet instanceof ClientboundEntityPositionSyncPacket sync) {
@@ -134,7 +128,7 @@ public class PacketHandler extends SessionAdapter {
                             tracked.position = sync.getPosition();
                         }
                     }
-                    bot.getEventManager().fireEvent(new PlayerMoveEvent(bot, tracked));
+                    eventManager.fireEvent(new PlayerMoveEvent(bot, tracked));
                 } else if (packet instanceof ClientboundRemoveEntitiesPacket remove) {
                     for (int id : remove.getEntityIds()) {
                         bot.getPlayerTracker().removePlayer(id);
@@ -148,15 +142,15 @@ public class PacketHandler extends SessionAdapter {
 
     private void handleTeleportEntity(ClientboundTeleportEntityPacket packet) {
         if (packet.getId() == bot.getEntityId()) {
-            BotUpdater.setLocation(bot, packet.getPosition());
-            BotUpdater.setYaw(bot, packet.getYRot());
-            BotUpdater.setPitch(bot, packet.getXRot());
+            bot.setLocation(packet.getPosition());
+            bot.setYaw(packet.getYRot());
+            bot.setPitch(packet.getXRot());
         } else {
             var tracked = bot.getPlayerTracker().getPlayer(packet.getId());
             if (tracked != null) {
                 if (tracked.position.compareTo(packet.getPosition()) != 0) {
                     tracked.position = packet.getPosition();
-                    bot.getEventManager().fireEvent(new PlayerMoveEvent(bot, tracked));
+                    eventManager.fireEvent(new PlayerMoveEvent(bot, tracked));
                 }
             }
         }
@@ -168,14 +162,14 @@ public class PacketHandler extends SessionAdapter {
             var newPos = tracked.position.add(packet.getMoveX(), packet.getMoveY(), packet.getMoveZ());
             if (tracked.position.compareTo(newPos) != 0) {
                 tracked.position = newPos;
-                bot.getEventManager().fireEvent(new PlayerMoveEvent(bot, tracked));
+                eventManager.fireEvent(new PlayerMoveEvent(bot, tracked));
             }
         }
     }
 
     private void handleSetPlayerInventory(ClientboundSetPlayerInventoryPacket packet) {
         try {
-            Item item = packet.getContents() != null ? new Item(packet.getContents()) : null;
+            Item item = packet.getContents() != null ? new ItemImpl(packet.getContents()) : null;
             bot.getInventory().setItem(packet.getSlot(), item);
             eventManager.fireEvent(new ContainerUpdateContentEvent(bot, bot.getInventory(), true));
         } catch (Exception e) {
@@ -186,17 +180,18 @@ public class PacketHandler extends SessionAdapter {
     private void handleContainerSetContent(ClientboundContainerSetContentPacket packet) {
         try {
             int containerId = packet.getContainerId();
-            List<Item> items = Arrays.stream(packet.getItems()).map(stack -> stack == null ? null : new Item(stack)).toList();
+            List<Item> items = Arrays.stream(packet.getItems())
+                    .map(stack -> stack == null ? null : (Item) new ItemImpl(stack))
+                    .toList();
 
             if (containerId == 0) {
                 bot.getInventory().setItems(items);
-                bot.getInventory().windowStateId++;
                 eventManager.fireEvent(new ContainerUpdateContentEvent(bot, bot.getInventory(), true));
             } else {
-                Window window = bot.getOpenedWindow();
+                WindowImpl window = (WindowImpl) bot.getOpenedWindow();
                 if (window != null) {
                     window.setItems(items);
-                    window.windowStateId++;
+                    window.setWindowStateId(window.getWindowStateId() + 1);
                     eventManager.fireEvent(new ContainerUpdateContentEvent(bot, window, false));
                 }
             }
@@ -208,20 +203,17 @@ public class PacketHandler extends SessionAdapter {
     private void handleContainerSetSlot(ClientboundContainerSetSlotPacket packet) {
         try {
             int containerId = packet.getContainerId();
-            Item item = packet.getItem() != null ? new Item(packet.getItem()) : null;
+            ItemImpl item = packet.getItem() != null ? new ItemImpl(packet.getItem()) : null;
 
 
             if (containerId == 0) {
-                bot.getInventory().setItem(packet.getSlot(), item);
-                bot.getInventory().windowStateId++;
-                bot.getInventory().changedSlots.put(packet.getSlot(), item != null ? item.toHashedStack() : null);
-                eventManager.fireEvent(new ContainerUpdateContentEvent(bot, bot.getInventory(), true));
+                bot.getInventory().setItem(packet.getSlot(), item);eventManager.fireEvent(new ContainerUpdateContentEvent(bot, bot.getInventory(), true));
             } else {
-                Window window = bot.getOpenedWindow();
+                WindowImpl window = (WindowImpl) bot.getOpenedWindow();
                 if (window != null) {
                     window.setItem(packet.getSlot(), item);
-                    window.windowStateId++;
-                    window.changedSlots.put(packet.getSlot(), item != null ? item.toHashedStack() : null);
+                    window.setWindowStateId(window.getWindowStateId() + 1);
+                    window.getChangedSlots().put(packet.getSlot(), item != null ? item.toHashedStack() : null);
                     eventManager.fireEvent(new ContainerUpdateContentEvent(bot, window, false));
                 }
             }
@@ -264,9 +256,9 @@ public class PacketHandler extends SessionAdapter {
                 botExecutor.schedule(() -> {
                     try {
                         ClientSession newSession = BotFactory.createSession(bot.getCredentials(), bot.getServerAddress());
-                        BotUpdater.updateExecutor(bot);
+                        bot.updateExecutor();
                         newSession.addListener(new PacketHandler(bot));
-                        BotUpdater.updateSession(bot, newSession);
+                        bot.setSession(newSession);
 
                         log.info("{} has reconnected to the server", bot.getUsername());
                     } catch (Exception e) {
@@ -277,5 +269,22 @@ public class PacketHandler extends SessionAdapter {
                 }, delay, TimeUnit.MILLISECONDS);
             }
         });
+    }
+
+    // Converts Adventure Component to plain text
+    private String toPlainText(Component component) {
+        if (component == null) return "";
+        StringBuilder builder = new StringBuilder();
+        appendComponentText(component, builder);
+        return builder.toString();
+    }
+
+    private void appendComponentText(Component component, StringBuilder builder) {
+        if (component instanceof TextComponent textComponent) {
+            builder.append(textComponent.content());
+        }
+        for (Component child : component.children()) {
+            appendComponentText(child, builder);
+        }
     }
 }

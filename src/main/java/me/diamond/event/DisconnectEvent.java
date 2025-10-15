@@ -1,9 +1,9 @@
 package me.diamond.event;
 
-import me.diamond.MinecraftBot;
+import me.diamond.Bot;
 
 public class DisconnectEvent extends Event{
-    public DisconnectEvent(MinecraftBot bot) {
+    public DisconnectEvent(Bot bot) {
         super(bot);
     }
 }

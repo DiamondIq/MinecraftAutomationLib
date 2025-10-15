@@ -1,9 +1,9 @@
 package me.diamond.event;
 
-import me.diamond.MinecraftBot;
+import me.diamond.Bot;
 
 public class LogInEvent extends Event{
-    public LogInEvent(MinecraftBot bot) {
+    public LogInEvent(Bot bot) {
         super(bot);
     }
 }

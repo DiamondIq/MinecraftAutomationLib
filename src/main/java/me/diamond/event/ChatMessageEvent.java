@@ -1,8 +1,7 @@
 package me.diamond.event;
 
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-import me.diamond.MinecraftBot;
+import me.diamond.Bot;
 
 import java.util.Optional;
 
@@ -11,7 +10,7 @@ public class ChatMessageEvent extends Event {
     private final String message;
     private final Optional<String> senderName;
 
-    public ChatMessageEvent(MinecraftBot bot, String message, Optional<String> senderName) {
+    public ChatMessageEvent(Bot bot, String message, Optional<String> senderName) {
         super(bot);
         this.message = message;
         this.senderName = senderName;
