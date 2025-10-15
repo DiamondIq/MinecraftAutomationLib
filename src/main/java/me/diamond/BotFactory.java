@@ -50,15 +50,13 @@ public class BotFactory {
     }
 
     public static ClientSession createSession(Credentials credentials, InetSocketAddress serverAddress) {
-        MinecraftProtocol protocol;
+        MinecraftProtocol protocol = null;
         if (credentials instanceof MicrosoftCredentials microsoft) {
             StepFullJavaSession.FullJavaSession fullSession = loginMicrosoft(microsoft);
             var profile = fullSession.getMcProfile();
             protocol = new MinecraftProtocol(new GameProfile(profile.getId(), profile.getName()), profile.getMcToken().getAccessToken());
-        } else if (credentials instanceof OfflineCredentials offline) {
-            protocol = new MinecraftProtocol(offline.username());
-        } else {
-            throw new IllegalArgumentException("Unsupported credentials type!");
+        } else if (credentials instanceof OfflineCredentials(String username)) {
+            protocol = new MinecraftProtocol(username);
         }
 
         return createSession(protocol, serverAddress);

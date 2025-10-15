@@ -1,4 +1,4 @@
 package me.diamond.credentials;
 
-public interface Credentials {
+public sealed interface Credentials permits MicrosoftCredentials, OfflineCredentials {
 }
