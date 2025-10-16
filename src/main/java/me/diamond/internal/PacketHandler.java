@@ -171,7 +171,7 @@ final class PacketHandler extends SessionAdapter {
         try {
             Item item = packet.getContents() != null ? new ItemImpl(packet.getContents()) : null;
             ((InventoryImpl) bot.getInventory()).setItem(packet.getSlot(), item);
-            eventManager.fireEvent(new ContainerUpdateContentEvent(bot, bot.getInventory(), true));
+            eventManager.fireEvent(new InventoryUpdateEvent(bot, bot.getInventory()));
         } catch (Exception e) {
             log.warn("Error handling SetPlayerInventoryPacket: ", e);
         }
@@ -186,13 +186,13 @@ final class PacketHandler extends SessionAdapter {
 
             if (containerId == 0) {
                 ((InventoryImpl) bot.getInventory()).setItems(items);
-                eventManager.fireEvent(new ContainerUpdateContentEvent(bot, bot.getInventory(), true));
+                eventManager.fireEvent(new InventoryUpdateEvent(bot, bot.getInventory()));
             } else {
                 WindowImpl window = (WindowImpl) bot.getOpenedWindow();
                 if (window != null) {
                     window.setItems(items);
                     window.setWindowStateId(window.getWindowStateId() + 1);
-                    eventManager.fireEvent(new ContainerUpdateContentEvent(bot, window, false));
+                    eventManager.fireEvent(new WindowUpdateContentEvent(bot, window));
                 }
             }
         } catch (Exception e) {
@@ -208,14 +208,14 @@ final class PacketHandler extends SessionAdapter {
 
             if (containerId == 0) {
                 ((InventoryImpl) bot.getInventory()).setItem(packet.getSlot(), item);
-                eventManager.fireEvent(new ContainerUpdateContentEvent(bot, bot.getInventory(), true));
+                eventManager.fireEvent(new InventoryUpdateEvent(bot, bot.getInventory()));
             } else {
                 WindowImpl window = (WindowImpl) bot.getOpenedWindow();
                 if (window != null) {
                     window.setItem(packet.getSlot(), item);
                     window.setWindowStateId(window.getWindowStateId() + 1);
                     window.getChangedSlots().put(packet.getSlot(), item != null ? item.toHashedStack() : null);
-                    eventManager.fireEvent(new ContainerUpdateContentEvent(bot, window, false));
+                    eventManager.fireEvent(new WindowUpdateContentEvent(bot, window));
                 }
             }
         } catch (Exception e) {
