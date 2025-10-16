@@ -1,5 +1,6 @@
 package me.diamond.internal;
 
+import lombok.extern.slf4j.Slf4j;
 import me.diamond.event.Event;
 import me.diamond.event.EventManager;
 import me.diamond.event.Listener;
@@ -9,11 +10,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Consumer;
 
+@Slf4j
 final class EventManagerImpl implements EventManager {
 
     private final Map<Class<? extends Event>, List<Listener<? extends Event>>> listeners = new HashMap<>();
     private final Map<Class<? extends Event>, List<Consumer<? extends Event>>> oneTimeListeners = new HashMap<>();
-    private final ScheduledExecutorService executor; ;
+    private final ScheduledExecutorService executor;
 
     public EventManagerImpl(String username) {
         this.executor = Executors.newSingleThreadScheduledExecutor(r -> {
@@ -35,25 +37,38 @@ final class EventManagerImpl implements EventManager {
 
     @SuppressWarnings("unchecked")
     public <T extends Event> void fireEvent(T event) {
-        // Handle persistent listeners
+        // Persistent listeners
         List<Listener<? extends Event>> list = listeners.get(event.getClass());
         if (list != null) {
             for (Listener<? extends Event> listener : list) {
-                executor.execute(() -> ((Listener<T>) listener).onEvent(event));
+                executor.execute(() -> {
+                    try {
+                        ((Listener<T>) listener).onEvent(event);
+                    } catch (Exception e) {
+                        log.error("Error while executing {} listener: {}",
+                                event.getClass().getSimpleName(), e.getMessage(), e);
+                    }
+                });
             }
         }
 
-        // Handle one-time listeners
+        // One-time listeners
         List<Consumer<? extends Event>> list2 = oneTimeListeners.get(event.getClass());
         if (list2 != null && !list2.isEmpty()) {
             Iterator<Consumer<? extends Event>> iterator = list2.iterator();
             while (iterator.hasNext()) {
                 Consumer<? extends Event> action = iterator.next();
-                executor.execute(() -> ((Consumer<T>) action).accept(event));
+                executor.execute(() -> {
+                    try {
+                        ((Consumer<T>) action).accept(event);
+                    } catch (Exception e) {
+                        log.error("Error while executing one-time {} listener: {}",
+                                event.getClass().getSimpleName(), e.getMessage(), e);
+                    }
+                });
                 iterator.remove();
             }
 
-            // Clean up map entry if list is empty
             if (list2.isEmpty()) {
                 oneTimeListeners.remove(event.getClass());
             }
