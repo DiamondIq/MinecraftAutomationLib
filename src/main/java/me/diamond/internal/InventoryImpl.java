@@ -49,12 +49,10 @@ final class InventoryImpl implements Inventory {
     public void selectHotbarSlot(@Range(from = 0, to = 8) int slot) {
         getOwner().getSession().send(new ServerboundSetCarriedItemPacket(slot));
     }
-    @Override
     public void addItem(Item item) {
         items.add(item);
     }
 
-    @Override
     public void setItem(int slot, Item item) {
         items.set(slot, item);
     }

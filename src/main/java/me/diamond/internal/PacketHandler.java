@@ -170,7 +170,7 @@ final class PacketHandler extends SessionAdapter {
     private void handleSetPlayerInventory(ClientboundSetPlayerInventoryPacket packet) {
         try {
             Item item = packet.getContents() != null ? new ItemImpl(packet.getContents()) : null;
-            bot.getInventory().setItem(packet.getSlot(), item);
+            ((InventoryImpl) bot.getInventory()).setItem(packet.getSlot(), item);
             eventManager.fireEvent(new ContainerUpdateContentEvent(bot, bot.getInventory(), true));
         } catch (Exception e) {
             log.warn("Error handling SetPlayerInventoryPacket: ", e);
@@ -185,7 +185,7 @@ final class PacketHandler extends SessionAdapter {
                     .toList();
 
             if (containerId == 0) {
-                bot.getInventory().setItems(items);
+                ((InventoryImpl) bot.getInventory()).setItems(items);
                 eventManager.fireEvent(new ContainerUpdateContentEvent(bot, bot.getInventory(), true));
             } else {
                 WindowImpl window = (WindowImpl) bot.getOpenedWindow();
@@ -207,7 +207,8 @@ final class PacketHandler extends SessionAdapter {
 
 
             if (containerId == 0) {
-                bot.getInventory().setItem(packet.getSlot(), item);eventManager.fireEvent(new ContainerUpdateContentEvent(bot, bot.getInventory(), true));
+                ((InventoryImpl) bot.getInventory()).setItem(packet.getSlot(), item);
+                eventManager.fireEvent(new ContainerUpdateContentEvent(bot, bot.getInventory(), true));
             } else {
                 WindowImpl window = (WindowImpl) bot.getOpenedWindow();
                 if (window != null) {

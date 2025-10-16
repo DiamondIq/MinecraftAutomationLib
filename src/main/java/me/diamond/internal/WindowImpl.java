@@ -52,12 +52,10 @@ final class WindowImpl implements Window {
         return getItems().stream().filter(item -> namePattern.matcher(item.getDisplayName()).matches()).toList();
     }
 
-    @Override
     public void addItem(Item item) {
         items.add(item);
     }
 
-    @Override
     public void setItem(int slot, Item item) {
         items.set(slot, item);
     }

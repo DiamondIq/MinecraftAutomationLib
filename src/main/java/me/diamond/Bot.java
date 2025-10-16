@@ -39,10 +39,4 @@ public interface Bot {
     void sendCommand(String command);
     void lookAt(Vector3d location);
     void lookAtPlayer(PlayerTracker.TrackedPlayer player);
-
-    void setOpenedWindow(Window window);
-    void setLocation(Vector3d location);
-    void setYaw(float yaw);
-    void setPitch(float pitch);
-    void setEntityId(int entityId);
 }
