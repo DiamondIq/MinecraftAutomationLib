@@ -126,9 +126,9 @@ final class PacketHandler extends SessionAdapter {
                     if (tracked != null) {
                         if (tracked.position.compareTo(sync.getPosition()) != 0) {
                             tracked.position = sync.getPosition();
+                            eventManager.fireEvent(new PlayerMoveEvent(bot, tracked));
                         }
                     }
-                    eventManager.fireEvent(new PlayerMoveEvent(bot, tracked));
                 } else if (packet instanceof ClientboundRemoveEntitiesPacket remove) {
                     for (int id : remove.getEntityIds()) {
                         bot.getPlayerTracker().removePlayer(id);
