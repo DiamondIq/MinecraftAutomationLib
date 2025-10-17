@@ -12,12 +12,12 @@ import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.player.Serv
 import org.jetbrains.annotations.Range;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @Getter
 final class InventoryImpl implements Inventory {
 
-    @Setter
     private List<Item> items;
     private final Bot owner;
     private final int containerId;
@@ -25,7 +25,7 @@ final class InventoryImpl implements Inventory {
     InventoryImpl(Bot owner) {
         this.owner = owner;
         this.containerId = 0;
-        items = new ArrayList<>();
+        this.items = new ArrayList<>(Collections.nCopies(46, null)); // default player inv size
     }
 
     @Override

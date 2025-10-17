@@ -13,6 +13,7 @@ import org.geysermc.mcprotocollib.network.event.session.SessionAdapter;
 import org.geysermc.mcprotocollib.network.packet.Packet;
 import org.geysermc.mcprotocollib.protocol.data.game.entity.player.HandPreference;
 import org.geysermc.mcprotocollib.protocol.data.game.entity.type.EntityType;
+import org.geysermc.mcprotocollib.protocol.data.game.inventory.ContainerType;
 import org.geysermc.mcprotocollib.protocol.data.game.setting.ChatVisibility;
 import org.geysermc.mcprotocollib.protocol.data.game.setting.ParticleStatus;
 import org.geysermc.mcprotocollib.protocol.data.game.setting.SkinPart;
@@ -96,7 +97,7 @@ final class PacketHandler extends SessionAdapter {
                     handleContainerSetSlot(slotPacket);
                 } else if (packet instanceof ClientboundOpenScreenPacket openScreenPacket) {
                     if (openScreenPacket.getContainerId() != 0) {
-                        WindowImpl window = new WindowImpl(bot, toPlainText(openScreenPacket.getTitle()), openScreenPacket.getContainerId());
+                        WindowImpl window = new WindowImpl(bot, toPlainText(openScreenPacket.getTitle()), openScreenPacket.getContainerId(), getContainerSize(openScreenPacket.getType()));
                         bot.setOpenedWindow(window);
                         eventManager.fireEvent(new WindowOpenEvent(bot, window));
                     }
@@ -185,12 +186,22 @@ final class PacketHandler extends SessionAdapter {
                     .toList();
 
             if (containerId == 0) {
-                ((InventoryImpl) bot.getInventory()).setItems(items);
+                // Player inventory, you can still handle it if needed
+                InventoryImpl inventory = (InventoryImpl) bot.getInventory();
+                for (int i = 0; i < items.size(); i++) {
+                    if (i < inventory.getItems().size()) {
+                        inventory.setItem(i, items.get(i));
+                    }
+                }
                 eventManager.fireEvent(new InventoryUpdateEvent(bot, bot.getInventory()));
             } else {
                 WindowImpl window = (WindowImpl) bot.getOpenedWindow();
                 if (window != null) {
-                    window.setItems(items);
+                    for (int i = 0; i < items.size(); i++) {
+                        if (i < window.getItems().size()) { // only set slots that exist in window, ignore player's inventory
+                            window.setItem(i, items.get(i));
+                        }
+                    }
                     window.setWindowStateId(window.getWindowStateId() + 1);
                     eventManager.fireEvent(new WindowUpdateContentEvent(bot, window));
                 }
@@ -205,13 +216,15 @@ final class PacketHandler extends SessionAdapter {
             int containerId = packet.getContainerId();
             ItemImpl item = packet.getItem() != null ? new ItemImpl(packet.getItem()) : null;
 
-
             if (containerId == 0) {
-                ((InventoryImpl) bot.getInventory()).setItem(packet.getSlot(), item);
-                eventManager.fireEvent(new InventoryUpdateEvent(bot, bot.getInventory()));
+                InventoryImpl inventory = (InventoryImpl) bot.getInventory();
+                if (packet.getSlot() < inventory.getItems().size()) { // bounds check
+                    inventory.setItem(packet.getSlot(), item);
+                    eventManager.fireEvent(new InventoryUpdateEvent(bot, bot.getInventory()));
+                }
             } else {
                 WindowImpl window = (WindowImpl) bot.getOpenedWindow();
-                if (window != null) {
+                if (window != null && packet.getSlot() < window.getItems().size()) { // bounds check
                     window.setItem(packet.getSlot(), item);
                     window.setWindowStateId(window.getWindowStateId() + 1);
                     window.getChangedSlots().put(packet.getSlot(), item != null ? item.toHashedStack() : null);
@@ -222,6 +235,7 @@ final class PacketHandler extends SessionAdapter {
             log.warn("Error handling ContainerSetSlotPacket: ", e);
         }
     }
+
 
     private void startTickLoop(Session session) {
         if (tickTaskStarted) return;
@@ -288,4 +302,25 @@ final class PacketHandler extends SessionAdapter {
             appendComponentText(child, builder);
         }
     }
+
+    private int getContainerSize(ContainerType type) {
+        return switch (type) {
+            case GENERIC_9X1 -> 9;
+            case GENERIC_9X2 -> 18;
+            case GENERIC_9X3 -> 27;
+            case GENERIC_9X4 -> 36;
+            case GENERIC_9X5 -> 45;
+            case GENERIC_9X6 -> 54;
+            case ANVIL -> 3;
+            case BEACON -> 1;
+            case BREWING_STAND -> 5;
+            case ENCHANTMENT -> 2;
+            case FURNACE -> 3;
+            case HOPPER -> 5;
+            case MERCHANT -> 3;
+            case SHULKER_BOX -> 27;
+            default -> 0; // Fallback
+        };
+    }
+
 }

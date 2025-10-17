@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 public interface Window extends Container{
+    String getTitle();
     void clickItem(int slot, ClickItemAction clickItemAction);
     List<Item> getItemsByName(Pattern namePattern);
 }
