@@ -6,8 +6,8 @@ import me.diamond.event.EventManager;
 import me.diamond.event.Listener;
 
 import java.util.*;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Consumer;
 
 @Slf4j
@@ -15,14 +15,10 @@ final class EventManagerImpl implements EventManager {
 
     private final Map<Class<? extends Event>, List<Listener<? extends Event>>> listeners = new HashMap<>();
     private final Map<Class<? extends Event>, List<Consumer<? extends Event>>> oneTimeListeners = new HashMap<>();
-    private final ScheduledExecutorService executor;
+    private final ExecutorService executor;
 
     public EventManagerImpl(String username) {
-        this.executor = Executors.newSingleThreadScheduledExecutor(r -> {
-            Thread t = new Thread(r, username + "-event-thread");
-            t.setDaemon(true);
-            return t;
-        });
+        this.executor = Executors.newVirtualThreadPerTaskExecutor();
     }
 
     @Override
@@ -41,7 +37,7 @@ final class EventManagerImpl implements EventManager {
         List<Listener<? extends Event>> list = listeners.get(event.getClass());
         if (list != null) {
             for (Listener<? extends Event> listener : list) {
-                executor.execute(() -> {
+                executor.submit(() -> {
                     try {
                         ((Listener<T>) listener).onEvent(event);
                     } catch (Exception e) {
@@ -58,7 +54,7 @@ final class EventManagerImpl implements EventManager {
             Iterator<Consumer<? extends Event>> iterator = list2.iterator();
             while (iterator.hasNext()) {
                 Consumer<? extends Event> action = iterator.next();
-                executor.execute(() -> {
+                executor.submit(() -> {
                     try {
                         ((Consumer<T>) action).accept(event);
                     } catch (Exception e) {
