@@ -100,7 +100,7 @@ final class PacketHandler extends SessionAdapter {
                     if (openScreenPacket.getContainerId() != 0) {
                         WindowImpl window = new WindowImpl(bot, toPlainText(openScreenPacket.getTitle()), openScreenPacket.getContainerId(), getContainerSize(openScreenPacket.getType()));
                         bot.setOpenedWindow(window);
-                        eventManager.fireEvent(new WindowOpenEvent(bot, window));
+                        eventManager.fireEvent(new WindowOpenEvent(bot));
                     }
                 } else if (packet instanceof ClientboundContainerClosePacket containerClosePacket) {
                     if (containerClosePacket.getContainerId() != 0) {

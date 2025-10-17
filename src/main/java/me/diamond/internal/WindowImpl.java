@@ -12,7 +12,6 @@ import org.geysermc.mcprotocollib.protocol.data.game.item.HashedStack;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.inventory.ServerboundContainerClickPacket;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -38,15 +37,21 @@ final class WindowImpl implements Window {
 
     @Override
     public void clickItem(int slot, ClickItemAction clickItemAction) {
+        windowStateId++;
+
+        Int2ObjectOpenHashMap<HashedStack> slots = new Int2ObjectOpenHashMap<>();
+        slots.put(slot, null);
+
         ServerboundContainerClickPacket click = new ServerboundContainerClickPacket(
                 getContainerId(),
                 windowStateId,
                 slot,
                 ContainerActionType.CLICK_ITEM,
                 clickItemAction,
-                (cursorItem != null ? ((ItemImpl) cursorItem).toHashedStack() : null),
-                changedSlots
+                null,
+                slots
         );
+
         getOwner().getSession().send(click);
     }
 
