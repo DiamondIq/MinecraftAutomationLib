@@ -8,6 +8,10 @@ public interface Item {
     ItemStack getItemStack();
     int getId();
     int getAmount();
+    /**
+     * @return The slot of a window that the item is in
+     */
+    int getWindowSlot();
     boolean isUnbreakable();
     String getDisplayName();
     List<String> getLore();

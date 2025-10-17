@@ -31,6 +31,7 @@ import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.level.Serve
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.level.ServerboundChunkBatchReceivedPacket;
 import org.geysermc.mcprotocollib.protocol.packet.ingame.serverbound.player.ServerboundMovePlayerPosPacket;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -170,7 +171,7 @@ final class PacketHandler extends SessionAdapter {
 
     private void handleSetPlayerInventory(ClientboundSetPlayerInventoryPacket packet) {
         try {
-            Item item = packet.getContents() != null ? new ItemImpl(packet.getContents()) : null;
+            Item item = packet.getContents() != null ? new ItemImpl(packet.getContents(), packet.getSlot()) : null;
             ((InventoryImpl) bot.getInventory()).setItem(packet.getSlot(), item);
             eventManager.fireEvent(new InventoryUpdateEvent(bot, bot.getInventory()));
         } catch (Exception e) {
@@ -181,12 +182,18 @@ final class PacketHandler extends SessionAdapter {
     private void handleContainerSetContent(ClientboundContainerSetContentPacket packet) {
         try {
             int containerId = packet.getContainerId();
-            List<Item> items = Arrays.stream(packet.getItems())
-                    .map(stack -> stack == null ? null : (Item) new ItemImpl(stack))
-                    .toList();
+
+            // Convert stacks to items, keeping track of slot index
+            List<Item> items = new ArrayList<>();
+            var stacks = packet.getItems();
+
+            for (int i = 0; i < stacks.length; i++) {
+                var stack = stacks[i];
+                items.add(stack == null ? null : new ItemImpl(stack, i));
+            }
 
             if (containerId == 0) {
-                // Player inventory, you can still handle it if needed
+                // Player inventory
                 InventoryImpl inventory = (InventoryImpl) bot.getInventory();
                 for (int i = 0; i < items.size(); i++) {
                     if (i < inventory.getItems().size()) {
@@ -195,14 +202,15 @@ final class PacketHandler extends SessionAdapter {
                 }
                 eventManager.fireEvent(new InventoryUpdateEvent(bot, bot.getInventory()));
             } else {
+                // Window / container
                 WindowImpl window = (WindowImpl) bot.getOpenedWindow();
                 if (window != null) {
                     for (int i = 0; i < items.size(); i++) {
-                        if (i < window.getItems().size()) { // only set slots that exist in window, ignore player's inventory
+                        if (i < window.getItems().size()) { // prevent setting player inv slots
                             window.setItem(i, items.get(i));
                         }
                     }
-                    window.setWindowStateId(window.getWindowStateId() + 1);
+                    window.setWindowStateId(packet.getStateId());
                     eventManager.fireEvent(new WindowUpdateContentEvent(bot, window));
                 }
             }
@@ -214,7 +222,7 @@ final class PacketHandler extends SessionAdapter {
     private void handleContainerSetSlot(ClientboundContainerSetSlotPacket packet) {
         try {
             int containerId = packet.getContainerId();
-            ItemImpl item = packet.getItem() != null ? new ItemImpl(packet.getItem()) : null;
+            ItemImpl item = packet.getItem() != null ? new ItemImpl(packet.getItem(), packet.getSlot()) : null;
 
             if (containerId == 0) {
                 InventoryImpl inventory = (InventoryImpl) bot.getInventory();
@@ -226,7 +234,7 @@ final class PacketHandler extends SessionAdapter {
                 WindowImpl window = (WindowImpl) bot.getOpenedWindow();
                 if (window != null && packet.getSlot() < window.getItems().size()) { // bounds check
                     window.setItem(packet.getSlot(), item);
-                    window.setWindowStateId(window.getWindowStateId() + 1);
+                    window.setWindowStateId(packet.getStateId());
                     window.getChangedSlots().put(packet.getSlot(), item != null ? item.toHashedStack() : null);
                     eventManager.fireEvent(new WindowUpdateContentEvent(bot, window));
                 }

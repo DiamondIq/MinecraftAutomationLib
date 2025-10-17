@@ -9,6 +9,7 @@ import org.geysermc.mcprotocollib.protocol.data.game.item.component.DataComponen
 import org.geysermc.mcprotocollib.protocol.data.game.item.component.DataComponentType;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
@@ -17,14 +18,16 @@ final class ItemImpl implements Item {
     private final ItemStack itemStack;
     private final int id;
     private final int amount;
+    private final int windowSlot;
     private final boolean unbreakable;
     private final String displayName;
     private final List<String> lore;
 
-    public ItemImpl(ItemStack stack) {
+    public ItemImpl(ItemStack stack, int windowSlot) {
         itemStack = stack;
         this.id = stack.getId();
         this.amount = stack.getAmount();
+        this.windowSlot = windowSlot;
 
         DataComponents data = stack.getDataComponentsPatch();
         if (data != null) {
